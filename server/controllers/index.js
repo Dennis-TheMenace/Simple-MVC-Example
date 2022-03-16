@@ -1,5 +1,6 @@
 // pull in our models. This will automatically load the index.js from that folder
 const models = require('../models');
+const Cat = models.Cat;
 
 // default fake data so that we have something to work with until we make a real Cat
 const defaultData = {
@@ -7,18 +8,28 @@ const defaultData = {
   bedsOwned: 0,
 };
 
-let lastAdded;
+let lastAdded = new Cat(defaultData);
 
 const hostIndex = (req, res) => {
   res.render('index', {
-    currentName: 'Placeholder',
+    currentName: lastAdded.name,
     title: 'Home',
     pageName: 'Home Page'
   });
 };
 
-const hostPage1 = (req, res) => {
+const hostPage1 = async (req, res) => {
+  try
+  {
+    const docs = await Cat.find({}).lean().exec();
 
+    return res.render('page1', {cats: docs});
+  }
+  catch (err)
+  {
+    console.log(err);
+    return res.status(500).json({error: 'Failure to retrieve cat data'});
+  }
 };
 
 const hostPage2 = (req, res) => {
@@ -30,14 +41,38 @@ const hostPage3 = (req, res) => {
 };
 
 const getName = (req, res) => {
-
+  return res.json({name: lastAdded.name});
 };
 
-const setName = (req, res) => {
+const setName = async (req, res) => {
   if (!req.body.firstname || !req.body.lastname || !req.body.beds) {
     return res.status(400).json({ error: 'firstname,lastname and beds are all required' });
   }
   
+  const catData = 
+  {
+    name: `${req.body.firstname} ${req.body.lastname}`,
+    bedsOwned: req.body.beds,
+  };
+
+  const newCat = new Cat(catData);
+
+  try
+  {
+    await newCat.save();
+
+    lastAdded = newCat;
+    return res.json(
+    {
+      name: lastAdded.name,
+      beds: lastAdded.bedsOwned,
+    });
+  }
+  catch (err)
+  {
+    console.log(err);
+    return res.status(500).json({error: 'Error'});
+  }
 };
 
 const searchName = (req, res) => {
